@@ -1,0 +1,308 @@
+import { useEffect, useState } from 'react';
+import {
+  ArrowDownLeft,
+  ArrowDownRight,
+  ArrowUpRight,
+  Bell,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CircleHelp,
+  CirclePlus,
+  Command,
+  Download,
+  ExternalLink,
+  FileCheck2,
+  Filter,
+  Flame,
+  Gift,
+  LayoutDashboard,
+  LockKeyhole,
+  MoreHorizontal,
+  Search,
+  Settings2,
+  ShieldCheck,
+  UsersRound,
+  Wallet,
+  X,
+} from 'lucide-react';
+
+const seedCampaigns = [
+  { id: 'DRP-024', name: 'Genesis community', ticker: 'GEN', chain: 'Base', allocation: 820000, claimed: 639600, recipients: 2486, claimedPeople: 1940, status: 'Live', start: 'Aug 12, 2026', color: 'mint', icon: 'G' },
+  { id: 'DRP-023', name: 'Summer builders', ticker: 'BUILD', chain: 'Base', allocation: 245000, claimed: 181300, recipients: 812, claimedPeople: 601, status: 'Live', start: 'Aug 04, 2026', color: 'orange', icon: 'B' },
+  { id: 'DRP-022', name: 'Robinhood early access', ticker: 'HOOD', chain: 'Robinhood Chain', allocation: 500000, claimed: 0, recipients: 1620, claimedPeople: 0, status: 'Scheduled', start: 'Sep 30, 2026', color: 'blue', icon: 'R' },
+  { id: 'DRP-021', name: 'Protocol contributors', ticker: 'GEN', chain: 'Base', allocation: 120000, claimed: 0, recipients: 94, claimedPeople: 0, status: 'Draft', start: 'Not scheduled', color: 'plum', icon: 'P' },
+];
+
+const initialEvents = [
+  { type: 'claim', title: 'Claim processed', detail: '0x71c…8e23 claimed 240 GEN', time: '2 min ago', amount: '240 GEN', color: 'mint', chain: 'Base' },
+  { type: 'fund', title: 'Distribution funded', detail: 'Genesis community · Base', time: '18 min ago', amount: '+12,400 GEN', color: 'blue', chain: 'Base' },
+  { type: 'verify', title: 'Eligibility updated', detail: 'Summer builders · 32 recipients', time: '1 hr ago', amount: '32 added', color: 'orange', chain: 'Base' },
+  { type: 'claim', title: 'Claim processed', detail: '0x29b…1190 claimed 185 BUILD', time: '3 hr ago', amount: '185 BUILD', color: 'mint', chain: 'Base' },
+  { type: 'verify', title: 'Campaign scheduled', detail: 'Robinhood early access · 1,620 recipients', time: 'Yesterday', amount: 'Sep 30', color: 'orange', chain: 'Robinhood Chain' },
+];
+
+const sampleRecipients = [
+  { address: '0x71c...8e23', campaign: 'Genesis community', chain: 'Base', allocation: '1,200 GEN', claimed: '240 GEN', status: 'Claimed', updated: '2 min ago' },
+  { address: '0x29b...1190', campaign: 'Summer builders', chain: 'Base', allocation: '850 BUILD', claimed: '185 BUILD', status: 'Claimed', updated: '3 hr ago' },
+  { address: '0x4a2...80dd', campaign: 'Genesis community', chain: 'Base', allocation: '600 GEN', claimed: '0 GEN', status: 'Claimable', updated: 'Sep 26, 2026' },
+  { address: '0xe18...0f54', campaign: 'Genesis community', chain: 'Base', allocation: '2,400 GEN', claimed: '2,400 GEN', status: 'Claimed', updated: 'Sep 25, 2026' },
+  { address: '0xc71...21ab', campaign: 'Robinhood early access', chain: 'Robinhood Chain', allocation: '500 HOOD', claimed: '0 HOOD', status: 'Scheduled', updated: 'Sep 24, 2026' },
+  { address: '0x8d0...45ce', campaign: 'Summer builders', chain: 'Base', allocation: '0 BUILD', claimed: '0 BUILD', status: 'Excluded', updated: 'Sep 21, 2026' },
+];
+
+const navItems = [
+  { label: 'Overview', icon: LayoutDashboard },
+  { label: 'Distributions', icon: Gift, count: '04' },
+  { label: 'Recipients', icon: UsersRound },
+  { label: 'Activity log', icon: FileCheck2 },
+];
+
+const numberFormat = new Intl.NumberFormat('en-US');
+const compactFormat = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+
+function readSaved() {
+  try {
+    const saved = localStorage.getItem('relay-campaigns-v1');
+    return saved ? [...JSON.parse(saved), ...seedCampaigns] : seedCampaigns;
+  } catch {
+    return seedCampaigns;
+  }
+}
+
+function App() {
+  const [campaigns, setCampaigns] = useState(readSaved);
+  const [activeNav, setActiveNav] = useState('Overview');
+  const [chain, setChain] = useState('All networks');
+  const [chainMenuOpen, setChainMenuOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [recipientFilter, setRecipientFilter] = useState('All');
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [toast, setToast] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('relay-campaigns-v1', JSON.stringify(campaigns.filter((item) => item.isLocal)));
+  }, [campaigns]);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timeout = window.setTimeout(() => setToast(''), 3200);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
+
+  const totalAllocated = campaigns.reduce((sum, item) => sum + item.allocation, 0);
+  const totalClaimed = campaigns.reduce((sum, item) => sum + item.claimed, 0);
+  const liveCampaigns = campaigns.filter((item) => item.status === 'Live').length;
+  const visibleCampaigns = campaigns.filter((item) => {
+    const matchesChain = chain === 'All networks' || item.chain === chain;
+    const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
+    const matchesQuery = `${item.name} ${item.ticker} ${item.id}`.toLowerCase().includes(query.toLowerCase());
+    return matchesChain && matchesStatus && matchesQuery;
+  });
+  const visibleRecipients = sampleRecipients.filter((recipient) => {
+    const matchesChain = chain === 'All networks' || recipient.chain === chain;
+    const matchesStatus = recipientFilter === 'All' || recipient.status === recipientFilter;
+    const matchesQuery = `${recipient.address} ${recipient.campaign}`.toLowerCase().includes(query.toLowerCase());
+    return matchesChain && matchesStatus && matchesQuery;
+  });
+
+  function createCampaign(data) {
+    const campaign = {
+      id: `DRP-${String(Date.now()).slice(-3)}`,
+      ...data,
+      claimed: 0,
+      recipients: 0,
+      claimedPeople: 0,
+      status: 'Draft',
+      start: 'Not scheduled',
+      color: data.chain === 'Base' ? 'mint' : 'blue',
+      icon: data.ticker.slice(0, 1).toUpperCase(),
+      isLocal: true,
+    };
+    setCampaigns((current) => [campaign, ...current]);
+    setShowCreate(false);
+    setToast('Draft created. No funds have moved.');
+  }
+
+  function simulateAction(campaign) {
+    setSelectedCampaign(null);
+    setToast(`${campaign.name} is a preview. Connect a distribution contract to take action.`);
+  }
+
+  const navContent = (
+    <>
+      <div className="workspace-label">WORKSPACE</div>
+      <div className="workspace-switcher">
+        <div className="workspace-mark">F</div>
+        <div className="workspace-copy"><strong>Fused Protocol</strong><span>Operations team</span></div>
+        <ChevronDown size={15} />
+      </div>
+      <div className="nav-label">OPERATIONS</div>
+      <nav className="side-nav" aria-label="Main navigation">
+        {navItems.map(({ label, icon: Icon, count }) => (
+          <button className={`nav-item ${activeNav === label ? 'active' : ''}`} key={label} onClick={() => { setActiveNav(label); setMobileMenuOpen(false); }}>
+            <Icon size={17} strokeWidth={1.8} /><span>{label}</span>{count && <span className="nav-count">{label === 'Distributions' ? String(campaigns.length).padStart(2, '0') : count}</span>}
+          </button>
+        ))}
+      </nav>
+      <div className="sidebar-bottom">
+        <div className="network-status"><span className="live-dot" /><div><strong>All systems operational</strong><span>Networks synced just now</span></div></div>
+        <button className="nav-item" onClick={() => setToast('Settings are not available in this preview.')}><Settings2 size={17} /><span>Settings</span></button>
+        <button className="nav-item" onClick={() => setToast('Support links will be available when a workspace is connected.')}><CircleHelp size={17} /><span>Help & support</span><ArrowUpRight className="nav-external" size={13} /></button>
+        <div className="profile-row"><div className="avatar">AK</div><div className="profile-copy"><strong>Alex Kim</strong><span>Admin</span></div><MoreHorizontal size={18} /></div>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">{navContent}</aside>
+      {mobileMenuOpen && <div className="mobile-sidebar">{navContent}</div>}
+      <main className="main-area">
+        <header className="topbar">
+          <button className="mobile-menu-button icon-button" title="Open navigation" onClick={() => setMobileMenuOpen((open) => !open)}><Command size={18} /></button>
+          <div className="breadcrumb"><span>Fused Protocol</span><ChevronRight size={14} /><strong>{activeNav}</strong></div>
+          <div className="topbar-actions">
+            <div className="chain-select-wrap">
+              <button className="chain-select" onClick={() => setChainMenuOpen((open) => !open)} aria-expanded={chainMenuOpen}>
+                <span className={`chain-dot ${chain === 'Robinhood Chain' ? 'hood' : chain === 'All networks' ? 'all' : 'base'}`} />
+                <span>{chain === 'All networks' ? 'All networks' : chain}</span><ChevronDown size={14} />
+              </button>
+              {chainMenuOpen && <div className="chain-menu">
+                {['All networks', 'Base', 'Robinhood Chain'].map((option) => <button key={option} onClick={() => { setChain(option); setChainMenuOpen(false); }}><span className={`chain-dot ${option === 'Robinhood Chain' ? 'hood' : option === 'All networks' ? 'all' : 'base'}`} />{option}{chain === option && <Check size={14} />}</button>)}
+              </div>}
+            </div>
+            <span className="topbar-divider" />
+            <button className="icon-button notification-button" title="Notifications" onClick={() => setToast('You’re all caught up.')}><Bell size={18} /><span /></button>
+            <button className="wallet-button" onClick={() => setToast('Wallet connection is not enabled in this preview.')}><Wallet size={16} /><span>Connect wallet</span></button>
+          </div>
+        </header>
+
+        <div className="page-content">
+          <div className="page-heading">
+            <div><div className="eyebrow"><span className="eyebrow-line" />TOKEN OPERATIONS <span className="demo-label">SAMPLE DATA</span></div><h1>{activeNav === 'Overview' ? 'Distribution, without the blind spots.' : activeNav === 'Recipients' ? 'Know who gets what.' : activeNav === 'Activity log' ? 'Every change, in context.' : 'Token distributions'}</h1><p className="heading-subtitle">{activeNav === 'Recipients' ? 'Review wallet eligibility and allocations across your campaigns.' : activeNav === 'Activity log' ? 'A chronological record of distribution events across networks.' : 'Track every allocation from funding to final claim.'}</p></div>
+            <button className="primary-button" onClick={() => setShowCreate(true)}><CirclePlus size={17} />Create distribution</button>
+          </div>
+
+          {activeNav === 'Overview' && <>
+          <section className="stats-row" aria-label="Distribution summary">
+            <StatCard label="Total distributed" value={`${compactFormat.format(totalAllocated)} `} suffix="TOKENS" change="Across all campaigns" icon={<ArrowDownRight size={16} />} tone="green" />
+            <StatCard label="Claimed by recipients" value={`${compactFormat.format(totalClaimed)} `} suffix="TOKENS" change={`${totalAllocated ? Math.round(totalClaimed / totalAllocated * 100) : 0}% of total allocation`} icon={<ArrowDownLeft size={16} />} tone="blue" />
+            <StatCard label="Active distributions" value={String(liveCampaigns).padStart(2, '0')} suffix="LIVE" change={`Across ${new Set(campaigns.map((item) => item.chain)).size} networks`} icon={<Flame size={16} />} tone="orange" />
+            <StatCard label="Unclaimed allocation" value={`${compactFormat.format(totalAllocated - totalClaimed)} `} suffix="TOKENS" change="Available to eligible wallets" icon={<LockKeyhole size={16} />} tone="plum" />
+          </section>
+
+          <section className="overview-grid">
+            <div className="claim-panel">
+              <div className="panel-head"><div><div className="panel-overline">CLAIM VELOCITY <span className="period-chip">LAST 30 DAYS <ChevronDown size={12} /></span></div><h2>Momentum is holding.</h2><p>Claims are tracking steadily across both networks.</p></div><button className="icon-button panel-menu" aria-label="More claim chart options"><MoreHorizontal size={19} /></button></div>
+              <ClaimChart />
+              <div className="chart-axis"><span>Aug 28</span><span>Sep 04</span><span>Sep 11</span><span>Sep 18</span><span>Sep 25</span></div>
+              <div className="chart-legend"><span><i className="legend-dot mint-dot" />Tokens claimed</span><span><i className="legend-dot gray-dot" />Eligible allocation</span><strong><span className="up-tick">+18.6%</span> vs. prior period</strong></div>
+            </div>
+            <div className="integrity-panel">
+              <div className="panel-overline">SAMPLE DISTRIBUTION CHECKS</div>
+              <div className="integrity-icon"><ShieldCheck size={20} /></div>
+              <h2>Looking good.</h2>
+              <p>Example health signals. These checks have not been run against live contracts.</p>
+              <div className="integrity-checks"><div><span><Check size={13} /></span>Contract funding <strong>Verified</strong></div><div><span><Check size={13} /></span>Claim conditions <strong>Passing</strong></div><div><span className="warning-check"><ArrowUpRight size={12} /></span>Recipient overlap <strong className="low-risk">Low risk</strong></div></div>
+              <button className="text-link" onClick={() => setActiveNav('Activity log')}>View audit trail <ArrowUpRight size={14} /></button>
+              <span className="integrity-stamp">LAST CHECKED 4 MIN AGO</span>
+            </div>
+          </section>
+          </>}
+
+          {(activeNav === 'Overview' || activeNav === 'Distributions') && <section className="campaign-section">
+            <div className="section-heading"><div><div className="section-kicker">YOUR DISTRIBUTIONS <span className="count-pill">{String(campaigns.length).padStart(2, '0')}</span></div><h2>Campaigns</h2></div><button className="secondary-button export-button" onClick={() => downloadCsv(visibleCampaigns)}><Download size={15} />Export CSV</button></div>
+            <div className="table-controls"><div className="filter-tabs" role="tablist" aria-label="Filter by status">{['All', 'Live', 'Scheduled', 'Draft'].map((status) => <button role="tab" aria-selected={statusFilter === status} className={statusFilter === status ? 'selected' : ''} key={status} onClick={() => setStatusFilter(status)}>{status}<span>{status === 'All' ? campaigns.length : campaigns.filter((item) => item.status === status).length}</span></button>)}</div><div className="table-tools"><label className="search-field"><Search size={15} /><input aria-label="Search campaigns" placeholder="Search campaigns" value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘ K</kbd></label><button className="filter-button" title="Filter by network" onClick={() => setChainMenuOpen((open) => !open)}><Filter size={15} /><span>Filter</span></button></div></div>
+            <div className="table-scroll"><table><thead><tr><th>CAMPAIGN</th><th>NETWORK</th><th>CLAIMED</th><th>RECIPIENTS</th><th>START DATE</th><th>STATUS</th><th aria-label="Campaign actions" /></tr></thead><tbody>
+              {visibleCampaigns.map((campaign) => <tr key={campaign.id} onClick={() => setSelectedCampaign(campaign)} tabIndex="0" onKeyDown={(event) => { if (event.key === 'Enter') setSelectedCampaign(campaign); }}>
+                <td><div className="campaign-cell"><div className={`token-mark ${campaign.color}`}>{campaign.icon}</div><div className="campaign-copy"><strong>{campaign.name}</strong><span>{campaign.id} <i /> {numberFormat.format(campaign.allocation)} {campaign.ticker}</span></div></div></td>
+                <td><div className="network-cell"><span className={`chain-dot ${campaign.chain === 'Robinhood Chain' ? 'hood' : 'base'}`} />{campaign.chain === 'Robinhood Chain' ? 'Robinhood' : 'Base'}</div></td>
+                <td><div className="claim-cell"><strong>{numberFormat.format(campaign.claimed)} <small>{campaign.ticker}</small></strong><div className="progress-track"><span style={{ width: `${campaign.allocation ? campaign.claimed / campaign.allocation * 100 : 0}%` }} /></div></div></td>
+                <td><span className="recipient-value">{numberFormat.format(campaign.claimedPeople)} <span>/ {numberFormat.format(campaign.recipients)}</span></span></td>
+                <td><span className="date-value">{campaign.start}</span></td>
+                <td><StatusBadge status={campaign.status} /></td>
+                <td><button className="row-menu" title={`Open ${campaign.name}`} onClick={(event) => { event.stopPropagation(); setSelectedCampaign(campaign); }}><MoreHorizontal size={17} /></button></td>
+              </tr>)}
+            </tbody></table>{visibleCampaigns.length === 0 && <div className="empty-state"><Search size={20} /><strong>No distributions found</strong><span>Try another search or network filter.</span></div>}</div>
+            <div className="table-footer"><span>Showing <strong>{visibleCampaigns.length ? 1 : 0}–{visibleCampaigns.length}</strong> of <strong>{campaigns.length}</strong> campaigns</span><div className="pagination"><button disabled aria-label="Previous page"><ChevronRight className="chevron-back" size={15} /></button><button className="current-page">1</button><button disabled aria-label="Next page"><ChevronRight size={15} /></button></div></div>
+          </section>}
+
+          {activeNav === 'Recipients' && <section className="campaign-section recipient-section">
+            <div className="section-heading"><div><div className="section-kicker">ELIGIBILITY ROSTER <span className="count-pill">{visibleRecipients.length}</span></div><h2>Recipients</h2></div><span className="roster-note">Preview subset · wallet addresses are abbreviated</span></div>
+            <div className="table-controls"><div className="filter-tabs recipient-tabs" role="tablist" aria-label="Filter recipients">{['All', 'Claimed', 'Claimable', 'Scheduled', 'Excluded'].map((status) => <button role="tab" aria-selected={recipientFilter === status} className={recipientFilter === status ? 'selected' : ''} key={status} onClick={() => setRecipientFilter(status)}>{status}</button>)}</div><label className="search-field"><Search size={15} /><input aria-label="Search recipient wallets" placeholder="Search wallets or campaigns" value={query} onChange={(event) => setQuery(event.target.value)} /></label></div>
+            <div className="table-scroll"><table className="recipient-table"><thead><tr><th>WALLET</th><th>CAMPAIGN</th><th>NETWORK</th><th>ALLOCATION</th><th>CLAIMED</th><th>ELIGIBILITY</th><th>UPDATED</th></tr></thead><tbody>
+              {visibleRecipients.map((recipient) => <tr key={recipient.address}><td><span className="wallet-address">{recipient.address}</span></td><td><span className="recipient-campaign">{recipient.campaign}</span></td><td><div className="network-cell"><span className={`chain-dot ${recipient.chain === 'Robinhood Chain' ? 'hood' : 'base'}`} />{recipient.chain === 'Robinhood Chain' ? 'Robinhood' : 'Base'}</div></td><td>{recipient.allocation}</td><td>{recipient.claimed}</td><td><StatusBadge status={recipient.status} /></td><td><span className="date-value">{recipient.updated}</span></td></tr>)}
+            </tbody></table>{visibleRecipients.length === 0 && <div className="empty-state"><Search size={20} /><strong>No recipients found</strong><span>Try another search or eligibility filter.</span></div>}</div>
+            <div className="table-footer"><span>Showing <strong>{visibleRecipients.length}</strong> sample recipients</span><span>Live eligibility requires a connected recipient list.</span></div>
+          </section>}
+
+          {(activeNav === 'Overview' || activeNav === 'Activity log') && <section className="activity-section"><div className="section-heading activity-heading"><div><div className="section-kicker">SAMPLE ACTIVITY FEED <span className="sample-feed-mark">PREVIEW</span></div><h2>{activeNav === 'Overview' ? 'Recent activity' : 'Activity log'}</h2></div>{activeNav === 'Overview' && <button className="text-link" onClick={() => setActiveNav('Activity log')}>Full activity log <ArrowUpRight size={14} /></button>}</div><div className="activity-list">{initialEvents.filter((event) => chain === 'All networks' || event.chain === chain).slice(0, activeNav === 'Overview' ? 3 : undefined).map((event, index) => <div className="activity-row" key={`${event.title}-${event.time}`}><div className={`activity-icon ${event.color}`}>{event.type === 'claim' ? <ArrowDownLeft size={16} /> : event.type === 'fund' ? <Wallet size={15} /> : <UsersRound size={15} />}</div><div className="activity-description"><strong>{event.title}</strong><span>{event.detail}</span></div><span className="activity-network"><i className={`chain-dot ${event.chain === 'Robinhood Chain' ? 'hood' : 'base'}`} />{event.chain === 'Robinhood Chain' ? 'Robinhood' : 'Base'}</span><span className="activity-amount">{event.amount}</span><span className="activity-time">{event.time}</span>{index === 0 && <ExternalLink className="activity-external" size={14} />}</div>)}</div>{initialEvents.filter((event) => chain === 'All networks' || event.chain === chain).length === 0 && <div className="empty-state"><Search size={20} /><strong>No activity on this network</strong><span>Try another network filter.</span></div>}</section>}
+          <footer className="page-footer"><span>Relay preview <i /> Distribution data is sample data for product exploration.</span><span>Drafts are saved to this browser <ArrowUpRight size={12} /></span></footer>
+        </div>
+      </main>
+      {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreate={createCampaign} />}
+      {selectedCampaign && <CampaignModal campaign={selectedCampaign} onClose={() => setSelectedCampaign(null)} onAction={simulateAction} />}
+      {toast && <div role="status" className="toast"><span><Check size={15} /></span>{toast}<button aria-label="Dismiss notification" onClick={() => setToast('')}><X size={14} /></button></div>}
+    </div>
+  );
+}
+
+function StatCard({ label, value, suffix, change, icon, tone }) {
+  return <div className="stat-card"><div className="stat-top"><span>{label}</span><span className={`stat-icon ${tone}`}>{icon}</span></div><div className="stat-value">{value}<small>{suffix}</small></div><div className="stat-change">{change}</div></div>;
+}
+
+function ClaimChart() {
+  return <div className="chart-area"><div className="chart-y-axis"><span>100k</span><span>75k</span><span>50k</span><span>25k</span><span>0</span></div><svg className="chart-svg" viewBox="0 0 700 170" preserveAspectRatio="none" role="img" aria-label="Claims grew steadily over the last 30 days">
+    <defs><linearGradient id="claimFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#b9e986" stopOpacity=".38" /><stop offset="100%" stopColor="#b9e986" stopOpacity="0" /></linearGradient></defs>
+    {[10, 48, 86, 124, 162].map((y) => <line key={y} x1="0" x2="700" y1={y} y2={y} stroke="#e9ebe5" strokeWidth="1" strokeDasharray="3 5" />)}
+    <path d="M0 148 C30 146, 44 140, 70 140 S112 132, 140 133 S177 121, 210 125 S245 115, 280 113 S322 104, 350 106 S392 94, 420 95 S463 84, 490 87 S534 69, 560 72 S602 59, 630 62 S672 38, 700 34 L700 170 L0 170Z" fill="url(#claimFill)" />
+    <path d="M0 148 C30 146, 44 140, 70 140 S112 132, 140 133 S177 121, 210 125 S245 115, 280 113 S322 104, 350 106 S392 94, 420 95 S463 84, 490 87 S534 69, 560 72 S602 59, 630 62 S672 38, 700 34" fill="none" stroke="#548e43" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+    <circle cx="700" cy="34" r="4" fill="#f6f7f2" stroke="#548e43" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+  </svg></div>;
+}
+
+function StatusBadge({ status }) {
+  const className = status.toLowerCase();
+  return <span className={`status-badge ${className}`}><i />{status}</span>;
+}
+
+function CreateModal({ onClose, onCreate }) {
+  const [name, setName] = useState('');
+  const [ticker, setTicker] = useState('');
+  const [allocation, setAllocation] = useState('');
+  const [network, setNetwork] = useState('Base');
+  const [error, setError] = useState('');
+
+  function submit(event) {
+    event.preventDefault();
+    const amount = Number(allocation);
+    if (!name.trim() || !ticker.trim() || !Number.isFinite(amount) || amount <= 0) {
+      setError('Add a campaign name, token symbol, and allocation greater than zero.');
+      return;
+    }
+    onCreate({ name: name.trim(), ticker: ticker.trim().toUpperCase(), allocation: amount, chain: network });
+  }
+
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal create-modal" role="dialog" aria-modal="true" aria-labelledby="create-title"><div className="modal-header"><div><span className="modal-overline">NEW DISTRIBUTION</span><h2 id="create-title">Start with the essentials.</h2><p>Set up your campaign details. You can add recipients and claim rules later.</p></div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button></div><form onSubmit={submit}><label>Campaign name<input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Community rewards" maxLength={48} /></label><div className="form-row"><label>Token symbol<input value={ticker} onChange={(event) => setTicker(event.target.value)} placeholder="e.g. FUSE" maxLength={10} /></label><label>Allocation<input type="number" min="1" step="any" value={allocation} onChange={(event) => setAllocation(event.target.value)} placeholder="250,000" /></label></div><label>Network<select value={network} onChange={(event) => setNetwork(event.target.value)}><option>Base</option><option>Robinhood Chain</option></select></label><div className="draft-notice"><ShieldCheck size={17} /><span><strong>Draft only</strong>Your campaign is saved in this browser. No wallet is connected and no transaction will be sent.</span></div>{error && <p className="form-error" role="alert">{error}</p>}<div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button"><CirclePlus size={16} />Create draft</button></div></form></section></div>;
+}
+
+function CampaignModal({ campaign, onClose, onAction }) {
+  const percent = campaign.allocation ? Math.round(campaign.claimed / campaign.allocation * 100) : 0;
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title"><div className="detail-top"><div className={`token-mark ${campaign.color}`}>{campaign.icon}</div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button></div><div className="detail-title-row"><div><span className="modal-overline">{campaign.id} <i /> {campaign.chain}</span><h2 id="detail-title">{campaign.name}</h2></div><StatusBadge status={campaign.status} /></div><div className="detail-allocation"><span>Claimed allocation</span><strong>{numberFormat.format(campaign.claimed)} <small>{campaign.ticker}</small></strong><div className="progress-track"><span style={{ width: `${percent}%` }} /></div><div className="detail-progress-labels"><span>{percent}% claimed</span><span>{numberFormat.format(campaign.allocation)} {campaign.ticker} total</span></div></div><div className="detail-facts"><div><span>Recipients claimed</span><strong>{numberFormat.format(campaign.claimedPeople)} <small>of {numberFormat.format(campaign.recipients)}</small></strong></div><div><span>Start date</span><strong>{campaign.start}</strong></div><div><span>Network</span><strong><span className={`chain-dot ${campaign.chain === 'Robinhood Chain' ? 'hood' : 'base'}`} />{campaign.chain}</strong></div><div><span>Contract status</span><strong className="verified-text"><Check size={14} />{campaign.status === 'Draft' ? 'Not deployed' : 'Sample verified'}</strong></div></div><div className="detail-callout"><LockKeyhole size={16} /><span>This is a product preview. Live contract verification and claim actions are not connected.</span></div><button className="primary-button detail-action" onClick={() => onAction(campaign)}>{campaign.status === 'Draft' ? 'Review launch requirements' : 'View on explorer'}<ArrowUpRight size={15} /></button></section></div>;
+}
+
+function downloadCsv(campaigns) {
+  const rows = [['Campaign', 'ID', 'Network', 'Token', 'Allocation', 'Claimed', 'Recipients', 'Status'], ...campaigns.map((item) => [item.name, item.id, item.chain, item.ticker, item.allocation, item.claimed, item.recipients, item.status])];
+  const csv = rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\n');
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  link.download = 'relay-distributions.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+export default App;

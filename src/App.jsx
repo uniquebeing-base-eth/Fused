@@ -22,7 +22,6 @@ import {
   Search,
   Settings2,
   ShieldCheck,
-  Trophy,
   UsersRound,
   Wallet,
   X,
@@ -57,7 +56,6 @@ const navItems = [
   { label: 'Distributions', icon: Gift, count: '04' },
   { label: 'Recipients', icon: UsersRound },
   { label: 'Activity log', icon: FileCheck2 },
-  { label: 'Empire Builder', icon: Trophy },
   { label: 'Docs & FAQ', icon: BookOpenText },
 ];
 
@@ -178,7 +176,7 @@ function App() {
             {activeNav !== 'Empire Builder' && <button className="primary-button" onClick={() => setShowCreate(true)}><CirclePlus size={17} />Create distribution</button>}
           </div>}
 
-          {activeNav === 'Docs & FAQ' ? <DocumentationPage onNavigate={setActiveNav} /> : activeNav === 'Empire Builder' ? <EmpireBuilderPage onNavigate={setActiveNav} /> : <>
+          {activeNav === 'Docs & FAQ' ? <DocumentationPage onNavigate={setActiveNav} /> : <>
           {activeNav === 'Overview' && <>
           <section className="stats-row" aria-label="Distribution summary">
             <StatCard label="Total distributed" value={`${compactFormat.format(totalAllocated)} `} suffix="TOKENS" change="Across all campaigns" icon={<ArrowDownRight size={16} />} tone="green" />
@@ -263,7 +261,7 @@ export function DocumentationPage({ onNavigate }) {
     ['Does Relay custody tokens or recipient data?', 'No. The preview stores newly created drafts in browser local storage only. It has no wallet, treasury, recipient import, backend, or custody service. Never enter real recipient or securities-holder data here.'],
     ['Does Empire Builder have a testnet sandbox?', 'The linked Empire Builder skill documents production endpoints and Base mainnet writes, not a testnet or sandbox. Relay therefore keeps the integration informational until a reviewed, owner-authorized flow and a safe testing strategy are in place.'],
   ];
-  
+  /*
   return <div className="docs-page">
     <header className="docs-hero">
       <div className="docs-hero-copy"><div className="eyebrow"><span className="eyebrow-line" />RELAY FIELD GUIDE <span className="demo-label">BASE FIRST</span></div><h1>Make every distribution explainable.</h1><p>One clear path from campaign rules to a verified payout: who qualifies, what they receive, where the treasury sent it, and what actually settled.</p><div className="docs-hero-meta"><span><span className="chain-dot" />BASE MAINNET · 8453 TARGET</span><span className="docs-preview-mark"><i /> PRODUCT PREVIEW</span></div></div>
@@ -295,7 +293,6 @@ export function DocumentationPage({ onNavigate }) {
           <a className="docs-external-link" href="https://www.empirebuilder.world/skill/SKILL.md" target="_blank" rel="noreferrer">Read the Empire Builder integration skill <ExternalLink size={14} /></a>
         </section>
         {/*
-      */}
       </article>
     ['why-relay', 'Why Relay'],
     ['campaign-flow', 'Campaign flow'],
@@ -315,6 +312,7 @@ export function DocumentationPage({ onNavigate }) {
     ['Does Empire Builder have a testnet sandbox?', 'The linked Empire Builder skill documents production endpoints and Base mainnet writes, not a testnet or sandbox. Relay therefore keeps the integration informational until a reviewed, owner-authorized flow and a safe testing strategy are in place.'],
   ];
 
+  */
   return <div className="docs-page">
     <header className="docs-hero">
       <div className="docs-hero-copy"><div className="eyebrow"><span className="eyebrow-line" />RELAY FIELD GUIDE <span className="demo-label">BASE FIRST</span></div><h1>Make every distribution explainable.</h1><p>One clear path from campaign rules to a verified payout: who qualifies, what they receive, where the treasury sent it, and what actually settled.</p><div className="docs-hero-meta"><span><span className="chain-dot" />BASE MAINNET · 8453 TARGET</span><span className="docs-preview-mark"><i /> PRODUCT PREVIEW</span></div></div>

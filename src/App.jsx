@@ -22,6 +22,7 @@ import {
   Search,
   Settings2,
   ShieldCheck,
+  Trophy,
   UsersRound,
   Wallet,
   X,
@@ -56,6 +57,7 @@ const navItems = [
   { label: 'Distributions', icon: Gift, count: '04' },
   { label: 'Recipients', icon: UsersRound },
   { label: 'Activity log', icon: FileCheck2 },
+  { label: 'Empire Builder', icon: Trophy },
   { label: 'Docs & FAQ', icon: BookOpenText },
 ];
 
@@ -172,11 +174,11 @@ function App() {
 
         <div className="page-content">
           {activeNav !== 'Docs & FAQ' && <div className="page-heading">
-            <div><div className="eyebrow"><span className="eyebrow-line" />TOKEN OPERATIONS <span className="demo-label">SAMPLE DATA</span></div><h1>{activeNav === 'Overview' ? 'Distribution, without the blind spots.' : activeNav === 'Recipients' ? 'Know who gets what.' : activeNav === 'Activity log' ? 'Every change, in context.' : 'Token distributions'}</h1><p className="heading-subtitle">{activeNav === 'Recipients' ? 'Review wallet eligibility and allocations on Base.' : activeNav === 'Activity log' ? 'A chronological record of distribution events on Base.' : 'Track every allocation from funding to final claim.'}</p></div>
-            <button className="primary-button" onClick={() => setShowCreate(true)}><CirclePlus size={17} />Create distribution</button>
+            <div><div className="eyebrow"><span className="eyebrow-line" />{activeNav === 'Empire Builder' ? 'EMPIRE BUILDER · BASE' : 'TOKEN OPERATIONS'} {activeNav !== 'Empire Builder' && <span className="demo-label">SAMPLE DATA</span>}</div><h1>{activeNav === 'Overview' ? 'Distribution, without the blind spots.' : activeNav === 'Recipients' ? 'Know who gets what.' : activeNav === 'Activity log' ? 'Every change, in context.' : activeNav === 'Empire Builder' ? 'Leaderboards & treasury' : 'Token distributions'}</h1><p className="heading-subtitle">{activeNav === 'Recipients' ? 'Review wallet eligibility and allocations on Base.' : activeNav === 'Activity log' ? 'A chronological record of distribution events on Base.' : activeNav === 'Empire Builder' ? 'Read Empire identity and leaderboard metadata. Payouts are not enabled.' : 'Track every allocation from funding to final claim.'}</p></div>
+            {activeNav !== 'Empire Builder' && <button className="primary-button" onClick={() => setShowCreate(true)}><CirclePlus size={17} />Create distribution</button>}
           </div>}
 
-          {activeNav === 'Docs & FAQ' ? <DocumentationPage onNavigate={setActiveNav} /> : <>
+          {activeNav === 'Docs & FAQ' ? <DocumentationPage onNavigate={setActiveNav} /> : activeNav === 'Empire Builder' ? <EmpireBuilderPage onNavigate={setActiveNav} /> : <>
           {activeNav === 'Overview' && <>
           <section className="stats-row" aria-label="Distribution summary">
             <StatCard label="Total distributed" value={`${compactFormat.format(totalAllocated)} `} suffix="TOKENS" change="Across all campaigns" icon={<ArrowDownRight size={16} />} tone="green" />
@@ -244,6 +246,57 @@ function App() {
 
 export function DocumentationPage({ onNavigate }) {
   const sections = [
+    ['why-relay', 'Why Relay'],
+    ['campaign-flow', 'Campaign flow'],
+    ['empire-builder', 'Empire Builder'],
+    ['asset-eligibility', 'Assets & eligibility'],
+    ['agent-access', 'AI agent access'],
+    ['frequently-asked', 'FAQ'],
+  ];
+  const faqs = [
+    ['Is Relay live on Base today?', 'Campaign creation, recipients, claims, and activity are still preview data. The Empire Builder page can read public Empire and leaderboard metadata through the local GET-only proxy, but Relay does not read Base RPC data, connect a wallet, deploy contracts, or send transactions.'],
+    ['What does “Base first” mean?', 'Relay is being scoped for Base mainnet (chain ID 8453). The preview has no network switch. Base support does not imply that a campaign is deployed, funded, or claimable on-chain.'],
+    ['Can a creator run a campaign for a tokenized stock?', 'Potentially, if the issuer’s actual token contract supports the intended transfer and claim pattern and the issuer permits it. Tokenized securities can be restricted by jurisdiction, identity, transfer-agent rules, and investor eligibility. Relay cannot make an asset eligible or provide legal authorization. Confirm the issuer’s requirements with qualified counsel before planning a distribution.'],
+    ['How would Empire Builder power leaderboards?', 'Empire Builder documents GET /api/leaderboards?tokenAddress=<empire_id> for reading an Empire’s boards, plus creation and refresh routes for types including CSV, token holders, stakers, NFTs, and external APIs. Its site restricts browser CORS to its own origin, so Relay needs a same-origin server proxy; write routes also need a server-side API key and the required signature. This preview has no proxy and makes no Empire API calls.'],
+    ['How does a treasury payout work?', 'The documented owner-operated integration path is: choose an Empire leaderboard; request a signed POST /api/distribute-prepare; have the vault owner review and submit the returned executeBatch calls on Base; wait for successful mined receipts; then POST /api/store-distribution with the receipt-backed transaction hashes and correct Empire and vault identifiers. This preview stops before every write or signature.'],
+    ['Can a co-signer or AI agent broadcast a payout?', 'Not through the Empire Builder prepare flow documented for agents: its signer must be the SmartVault owner, and direct executeBatch calls from co-signers can revert. A future Relay agent should prepare and explain a transaction, not hold an unrestricted key. Any execution should follow the vault’s supported authorization path, strict policy limits, and explicit approval.'],
+    ['Does Relay custody tokens or recipient data?', 'No. The preview stores newly created drafts in browser local storage only. It has no wallet, treasury, recipient import, backend, or custody service. Never enter real recipient or securities-holder data here.'],
+    ['Does Empire Builder have a testnet sandbox?', 'The linked Empire Builder skill documents production endpoints and Base mainnet writes, not a testnet or sandbox. Relay therefore keeps the integration informational until a reviewed, owner-authorized flow and a safe testing strategy are in place.'],
+  ];
+  
+  return <div className="docs-page">
+    <header className="docs-hero">
+      <div className="docs-hero-copy"><div className="eyebrow"><span className="eyebrow-line" />RELAY FIELD GUIDE <span className="demo-label">BASE FIRST</span></div><h1>Make every distribution explainable.</h1><p>One clear path from campaign rules to a verified payout: who qualifies, what they receive, where the treasury sent it, and what actually settled.</p><div className="docs-hero-meta"><span><span className="chain-dot" />BASE MAINNET · 8453 TARGET</span><span className="docs-preview-mark"><i /> PRODUCT PREVIEW</span></div></div>
+      <div className="docs-hero-note"><ShieldCheck size={20} /><strong>Designed for accountability.</strong><span>Approvals, asset restrictions, recipient eligibility, and receipt-backed records belong in the workflow, not in a footnote.</span><button className="text-link" onClick={() => onNavigate('Distributions')}>Explore the preview <ArrowUpRight size={14} /></button></div>
+    </header>
+
+    <div className="docs-layout">
+      <nav className="docs-toc" aria-label="On this page"><span>ON THIS PAGE</span>{sections.map(([id, label], index) => <a key={id} href={`#${id}`}><i>{String(index + 1).padStart(2, '0')}</i>{label}</a>)}<div className="docs-toc-note">This guide describes the intended product and integration. Preview data is not live.</div></nav>
+
+      <article className="docs-article">
+        <section className="docs-section" id="why-relay"><div className="docs-kicker">01 / THE PROBLEM</div><h2>Distribution breaks between the promise and the proof.</h2><p className="docs-lead">Campaigns still get coordinated across spreadsheets, wallet lists, leaderboard tools, treasury screens, and block explorers. Each handoff creates another chance for an allocation to be wrong or a payout to go unaccounted for.</p><div className="docs-problem-list"><div><span>01</span><div><strong>Eligibility lives in too many places</strong><p>Creators need a reviewable source for who qualifies and why, instead of copying opaque lists between tools.</p></div></div><div><span>02</span><div><strong>Allocation math is easy to lose</strong><p>Token selection, distribution rules, available balances, and per-recipient amounts should be reviewed together before authorization.</p></div></div><div><span>03</span><div><strong>A submitted transaction is not a settled distribution</strong><p>Recipients and operators need to reconcile the mined transaction receipts against the campaign and treasury that authorized them.</p></div></div></div><div className="docs-callout"><CircleHelp size={17} /><p><strong>Relay’s goal</strong> is to make that chain of evidence legible before, during, and after a campaign. The current app is a preview, not yet the source of that evidence.</p></div></section>
+
+        <section className="docs-section" id="campaign-flow"><div className="docs-kicker">02 / CAMPAIGN FLOW</div><h2>One reviewable campaign lifecycle.</h2><p>Creators should be able to understand every step before tokens move.</p><div className="docs-steps"><div><b>01</b><span className="docs-step-line" /><strong>Define</strong><p>Choose an asset on Base, campaign purpose, dates, recipient source, and distribution method.</p></div><div><b>02</b><span className="docs-step-line" /><strong>Validate</strong><p>Check addresses, eligibility, duplicate wallets, total allocation, token decimals, and treasury balance.</p></div><div><b>03</b><span className="docs-step-line" /><strong>Review</strong><p>Preview the exact recipient and token amounts, restrictions, fees, and transactions. Require the proper wallet authority to approve.</p></div><div><b>04</b><span className="docs-step-line" /><strong>Reconcile</strong><p>Wait for successful Base receipts, record transaction hashes, and compare confirmed results with the original plan.</p></div></div><div className="docs-inline-note"><LockKeyhole size={15} /><span>A draft is not a funded campaign. Relay does not send a transaction in this preview.</span></div></section>
+        {/*
+        <section className="docs-section" id="empire-builder">
+          <div className="docs-kicker">03 / LEADERBOARDS & TREASURY</div>
+          <div className="docs-section-title"><h2>Leaderboards in. Receipt-backed payouts out.</h2><span className="docs-planned-badge">PAYOUTS GATED</span></div>
+          <p>Relay reads public Empire identity and leaderboard metadata through a local GET-only proxy. Empire Builder blocks browser-origin API requests, so a production deployment also needs a same-origin server proxy. This page never sends write requests or asks for wallet signatures.</p>
+          <div className="empire-path">
+            <div><span className="empire-step">A · SOURCE</span><strong>Select a leaderboard</strong><p>Choose the Empire ID, then use <code>GET /api/leaderboards?tokenAddress=&lt;empire_id&gt;</code> to resolve its default or custom board. Supported sources include CSV, token holders, stakers, NFTs, and external APIs.</p></div>
+            <ChevronRight size={16} />
+            <div><span className="empire-step">B · PREPARE</span><strong>Preview recipients</strong><p><code>POST /api/distribute-prepare</code> requires a server API key and signed message. Its signer must be the SmartVault <code>owner()</code>; a co-signer is not sufficient for this route.</p></div>
+            <ChevronRight size={16} />
+            <div><span className="empire-step">C · AUTHORIZE</span><strong>Owner executes</strong><p>Review the exact chain, vault, calldata, tokens, and recipients before the owner submits <code>executeBatch</code> on Base. The owner pays gas on this integration path.</p></div>
+            <ChevronRight size={16} />
+            <div><span className="empire-step">D · RECONCILE</span><strong>Store mined receipts</strong><p>After successful receipts, <code>POST /api/store-distribution</code> records transaction hashes with the Empire ID and SmartVault address. Those two identifiers are not interchangeable.</p></div>
+          </div>
+          <div className="docs-warning"><LockKeyhole size={16} /><p><strong>Mainnet boundary:</strong> Empire Builder documents production endpoints and Base mainnet writes, with no testnet sandbox. Relay keeps preparation and execution disabled until server credentials, owner authorization, transaction review, and a deliberate production rollout are in place.</p></div>
+          <a className="docs-external-link" href="https://www.empirebuilder.world/skill/SKILL.md" target="_blank" rel="noreferrer">Read the Empire Builder integration skill <ExternalLink size={14} /></a>
+        </section>
+        {/*
+      */}
+      </article>
     ['why-relay', 'Why Relay'],
     ['campaign-flow', 'Campaign flow'],
     ['empire-builder', 'Empire Builder'],
